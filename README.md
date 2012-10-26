@@ -93,6 +93,10 @@ Let's continue from above, shall we?
 [1298, 'largeBiomes', 0, 0, 1, 0, 8]
 ```
 
+There. I've sent enough data, so it returned the completed list of the
+unpacked data. At this point, I can take my data, and do whatever it is I want
+with it.
+
 But wait! I just sent too much data to that iterator, and now I've lost some
 of my string, haven't I? That's not a problem either. You can call the iterator
 one final time and it will return the unconsumed remainder of the data.
