@@ -71,14 +71,14 @@ You can get a bit more complex, if you'd like.
 And, of course, you can unpack it too.
 
 ```python
->>> netstruct.unpack("i2b2h$", "\x00\x00\x00\x00\x01\x00\x01\x00\x00\x07default")
+>>> netstruct.unpack("i2bhh$", "\x00\x00\x00\x00\x01\x00\x01\x00\x00\x07default")
 [0, 1, 0, 256, 'default']
 ```
 
 You just have to be sure to use a long enough string.
 
 ```python
->>> netstruct.unpack("i2b2h$", "\x00\x00\x00\x00\x01\x00\x01\x00\x00\x07def")
+>>> netstruct.unpack("i2bhh$", "\x00\x00\x00\x00\x01\x00\x01\x00\x00\x07def")
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
   File "site-packages/netstruct.py", line 275, in unpack
