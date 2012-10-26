@@ -58,7 +58,7 @@ Alternatively.
 
 ```python
 >>> netstruct.unpack("b$", "\x0cHello World!")
-'Hello World!'
+['Hello World!']
 ```
 
 You can get a bit more complex, if you'd like.
