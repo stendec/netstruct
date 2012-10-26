@@ -101,3 +101,5 @@ one final time and it will return the unconsumed remainder of the data.
 >>> it.next()
 '   more'
 ```
+
+It's just that simple.
