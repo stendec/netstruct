@@ -68,8 +68,29 @@ You can get a bit more complex, if you'd like.
 '\x00\x00\x05\x12\x00\x0blargeBiomes\x00\x00\x01\x00\x08'
 ```
 
-But wait, you say. How am I supposed to receive structured data when I can't
-possibly know the length? Simply put, you *can* know the length.
+And, of course, you can unpack it too.
+
+```python
+>>> netstruct.unpack("i2b2h$", "\x00\x00\x00\x00\x01\x00\x01\x00\x00\x07default")
+[0, 1, 0, 256, 'default']
+```
+
+You just have to be sure to use a long enough string.
+
+```python
+>>> netstruct.unpack("i2b2h$", "\x00\x00\x00\x00\x01\x00\x01\x00\x00\x07def")
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "site-packages/netstruct.py", line 275, in unpack
+    return NetStruct(format).unpack(data)
+  File "site-packages/netstruct.py", line 165, in unpack
+    raise error("unpack requires a string argument of length %d" % (len(data) + out))
+struct.error: unpack requires a string argument of length 17
+```
+
+But wait, you say. How am I supposed to provide a long enough string to
+unpack the data when I can't possibly know the length ahead of time?
+Simply put, you *can* know the length.
 
 ```python
 >>> it = netstruct.iter_unpack("ih$5b")
