@@ -68,24 +68,24 @@ You can get a bit more complex, if you'd like.
 '\x00\x00\x05\x12\x00\x0blargeBiomes\x00\x00\x01\x00\x08'
 ```
 
-And, of course, you can unpack it too.
+And, of course, you can unpack complex data too.
 
 ```python
->>> netstruct.unpack("i2bhh$", "\x00\x00\x00\x00\x01\x00\x01\x00\x00\x07default")
-[0, 1, 0, 256, 'default']
+>>> netstruct.unpack("bh$h$i", "'\x00\x07stendec\x00\tlocalhost\x00\x00c\xdd")
+[39, 'stendec', 'localhost', 25565]
 ```
 
 You just have to be sure to use a long enough string.
 
 ```python
->>> netstruct.unpack("i2bhh$", "\x00\x00\x00\x00\x01\x00\x01\x00\x00\x07def")
+>>> netstruct.unpack("bh$h$i", "'\x00\x07stendec\x00\tlocalhost\x00")
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
   File "site-packages/netstruct.py", line 275, in unpack
     return NetStruct(format).unpack(data)
   File "site-packages/netstruct.py", line 165, in unpack
     raise error("unpack requires a string argument of length %d" % (len(data) + out))
-struct.error: unpack requires a string argument of length 17
+struct.error: unpack requires a string argument of length 25
 ```
 
 But wait, you say. How am I supposed to provide a long enough string to
