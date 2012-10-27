@@ -79,14 +79,15 @@ class NetStruct(object):
         '\x0cHello World!'
     """
 
-    __slots__ = ("_format", "_pairs", "_minsize", "_initsize")
+    __slots__ = ("_format", "_pairs", "_minsize", "_initsize", "_count")
 
     def __init__(self, format):
         self._format = format
+        self._minsize = 0
+        self._count = 0
 
         if not format:
             self._pairs = []
-            self._minsize = 0
             self._initsize = 0
         elif not isinstance(format, bytes):
             raise TypeError("NetStruct() format must be a byte string.")
@@ -97,7 +98,6 @@ class NetStruct(object):
 
             # Break the format down.
             self._pairs = pairs = []
-            self._minsize = 0
 
             if format[:1] in b"@=<>!":
                 byte_order = format[:1]
@@ -113,9 +113,16 @@ class NetStruct(object):
 
                 st = _Struct(byte_order + segment)
                 self._minsize += st.size
-                pairs.append((st, _count(segment), sep))
+                count = _count(segment)
+                self._count += count
+                pairs.append((st, count, sep))
 
             self._initsize = pairs[0][0].size
+
+    @property
+    def count(self):
+        """ The number of variables represented by this NetStruct. """
+        return self._count
 
     @property
     def format(self):
@@ -144,6 +151,9 @@ class NetStruct(object):
         """
         result = []
         append = result.append
+
+        if len(data) != self._count:
+            raise error("pack requires exactly %d arguments", self._count)
 
         for struct, count, has_string in self._pairs:
             if has_string:
@@ -198,22 +208,24 @@ class NetStruct(object):
         .next() or .send() to retrieve any unconsumed data.
         """
         result = []
+        remaining = self._minsize
 
         for struct, count, has_string in self._pairs:
 
             needed = struct.size
             while needed > len(data):
-                new_data = yield needed - len(data)
+                new_data = yield remaining - len(data)
                 if new_data:
                     data += new_data
 
             result.extend(struct.unpack(data[:needed]))
             data = data[needed:]
+            remaining -= needed
 
             if has_string:
                 needed = result.pop()
                 while needed > len(data):
-                    new_data = yield needed - len(data)
+                    new_data = yield (remaining + needed) - len(data)
                     if new_data:
                         data += new_data
 
