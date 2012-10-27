@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
     name="netstruct",
-    version="1.0",
+    version="1.1",
     description="Packed binary data for networking.",
     author="Stendec",
     author_email="me@stendec.me",
