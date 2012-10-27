@@ -63,10 +63,7 @@ class TestConstruction(unittest.TestCase):
 
 class TestUnpack(unittest.TestCase):
     def test_empty(self):
-        self.assertEqual(
-            netstruct.unpack(b"", b""),
-            []
-        )
+        self.assertEqual(netstruct.unpack(b"", b""), [])
 
     def test_not_enough(self):
         with self.assertRaises(netstruct.error):
@@ -80,10 +77,7 @@ class TestUnpack(unittest.TestCase):
 
 class TestPack(unittest.TestCase):
     def test_empty(self):
-        self.assertEqual(
-            netstruct.pack(b""),
-            b""
-        )
+        self.assertEqual(netstruct.pack(b""), b"")
 
     def test_not_enough(self):
         with self.assertRaises(netstruct.error):
@@ -108,19 +102,20 @@ class TestPack(unittest.TestCase):
 
 class TestIterUnpack(unittest.TestCase):
     def test_remaining(self):
-        self.assertEqual(
-            netstruct.iter_unpack(b"b$5i").next(),
-            21
-        )
+        self.assertEqual(netstruct.iter_unpack(b"b$5i").next(), 21)
+
+    def test_empty_send(self):
+        it = netstruct.iter_unpack(b"b$5i")
+        it.next()
+        it.send(b"\x05")
+
+        self.assertEqual(it.send(b""), 25)
 
     def test_remain_two(self):
         it = netstruct.iter_unpack(b"b$5i")
         it.next()
 
-        self.assertEqual(
-            it.send(b"\x05"),
-            25
-        )
+        self.assertEqual(it.send(b"\x05"), 25)
 
     def test_remain_three(self):
         it = netstruct.iter_unpack(b"b$5i")
@@ -128,10 +123,7 @@ class TestIterUnpack(unittest.TestCase):
         it.send(b"\x05")
         it.send(b"Hell")
 
-        self.assertEqual(
-            it.next(),
-            21
-        )
+        self.assertEqual(it.next(), 21)
 
     def test_total(self):
         it = netstruct.iter_unpack(b"b$4h")
@@ -148,10 +140,47 @@ class TestIterUnpack(unittest.TestCase):
         it.next()
         it.send(b"\x05Hello\x01\x02\x03\x04\x05\x06\x07\x08Test Here.")
 
+        self.assertEqual(it.next(), b"Test Here.")
+
+class TestObjUnpack(unittest.TestCase):
+    def test_creation(self):
+        obj = netstruct.obj_unpack(b"ih$5b")
+        self.assertEqual(obj.remaining, 11)
+        self.assertEqual(obj.result, None)
+        self.assertEqual(obj.unused_data, b"")
+
+    def test_remaining(self):
+        obj = netstruct.obj_unpack(b"ih$5b")
+        self.assertEqual(obj.feed(b"\x00\x02"), 9)
+
+    def test_remain_two(self):
+        obj = netstruct.obj_unpack(b"ih$5b")
+        self.assertEqual(obj.feed(b"\x00\x02\x00\x04\x00\x00"), 5)
+
+    def test_remain_three(self):
+        obj = netstruct.obj_unpack(b"ih$5b")
+        self.assertEqual(obj.feed(b"\x00\x00\x00\x00\x00\x02H"), 6)
+
+    def test_remain_four(self):
+        obj = netstruct.obj_unpack(b"ih$5b")
         self.assertEqual(
-            it.next(),
-            b"Test Here."
+            obj.feed("\x00\x02\x00\x04\x00\x00\x05\x04\x03\x02\x01"),
+            0
         )
+
+    def test_result(self):
+        obj = netstruct.obj_unpack(b"ih$5b")
+        obj.feed("\x00\x02\x00\x04\x00\x00\x05\x04\x03\x02\x01")
+
+        self.assertEqual(obj.remaining, 0)
+        self.assertEqual(obj.unused_data, b"")
+        self.assertEqual(obj.result, [131076, b"", 5, 4, 3, 2, 1])
+
+        obj.feed(b"test string")
+        self.assertEqual(obj.remaining, 0)
+        self.assertEqual(obj.unused_data, b"test string")
+        self.assertEqual(obj.result, [131076, b"", 5, 4, 3, 2, 1])
+
 
 ###############################################################################
 # Execution

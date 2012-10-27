@@ -95,7 +95,7 @@ Simply put, you *can* know the length.
 ```python
 >>> it = netstruct.iter_unpack("ih$5b")
 >>> it.next()
-6
+11
 ```
 
 The ``iter_unpack`` function returns an iterator. Each time you call that
@@ -107,7 +107,7 @@ Let's continue from above, shall we?
 
 ```python
 >>> it.send("\x00\x00\x05\x12\x00\x0b")
-11
+16
 >>> it.send("largeBiomes")
 5
 >>> it.send("\x00\x00\x01\x00\x08   more")
@@ -127,4 +127,25 @@ one final time and it will return the unconsumed remainder of the data.
 '   more'
 ```
 
-It's just that simple.
+It's just that simple. Of course, not everyone likes iterators, even if they
+*are* quicker and less memory intensive than a class instance. NetStruct is
+prepared, with its ``Unpacker`` class and ``obj_unpack``. Let's try that last
+example one more time.
+
+```python
+>>> obj = netstruct.obj_unpack("ih$5b")
+>>> obj.remaining
+11
+>>> obj.feed("\x00\x00\x05\x12\x00\x0b")
+16
+>>> obj.feed("largeBiomes")
+5
+>>> obj.feed("\x00\x00\x01\x00\x08   more")
+0
+>>> obj.result
+[1298, 'largeBiomes', 0, 0, 1, 0, 8]
+>>> obj.unused_data
+'   more'
+```
+
+Enjoy.

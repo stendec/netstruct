@@ -44,6 +44,120 @@ __all__ = (
 
 bytes = type(b"")
 
+
+###############################################################################
+# Unpacker Class
+###############################################################################
+
+class Unpacker(object):
+    """
+    Instances of Unpacker are created when you call a NetStruct's
+    :func:`~NetStruct.obj_unpack` method. These are used, as are the iterators
+    returned by :func:`NetStruct.iter_unpack`, to unpack a NetStruct over
+    time as you buffer more data. However, the Unpacker instance provides a
+    nicer interface.
+
+    .. code-block:: python
+
+        >>> import netstruct
+        >>> obj = netstruct.obj_unpack("ih$5b")
+        >>> obj.remaining
+        11
+        >>> obj.feed("1234\x00\x0512345")
+        5
+        >>> obj.feed("\x00\x01\x02\x03\x04 so there")
+        0
+        >>> obj.result
+        [825373492, '12345', 0, 1, 2, 3, 4]
+        >>> obj.unused_data
+        " so there"
+    """
+
+    __slots__ = ("_pairs", "_data", "_result", "_remaining")
+
+    def __init__(self, netstruct, data=b""):
+        self._pairs = netstruct._pairs[:]
+        self._remaining = netstruct._minsize
+        self._data = b""
+        self._result = []
+
+        if data:
+            self.feed(data)
+
+    def __repr__(self):
+        if self.remaining:
+            part = "remaining=%r" % self.remaining
+        else:
+            part = "result=%r, unused_data=%r" % (self.result, self.unused_data)
+
+        return "<%s[%s] at 0x%08X>" % (
+            self.__class__.__name__,
+            part,
+            id(self)
+        )
+
+    @property
+    def remaining(self):
+        """
+        The number of remaining bytes needed to finish unpacking the data.
+        """
+        return max(0, self._remaining - len(self._data))
+
+    @property
+    def result(self):
+        """ The resulting object, after all unpacking has completed. """
+        return None if self._remaining else self._result
+
+    @property
+    def unused_data(self):
+        """
+        A string which contains any bytes that weren't used in the construction
+        of the object.
+        """
+        return b"" if self._remaining else self._data
+
+    ##### Methods #############################################################
+
+    def feed(self, data):
+        """
+        Unpack *data* and return the number of remaining bytes needed to
+        finish unpacking the NetStruct.
+        """
+        self._data += data
+
+        while self._pairs:
+            struct, count, has_string = self._pairs[0]
+
+            if struct:
+                needed = struct.size
+                if needed > len(self._data):
+                    return self._remaining - len(self._data)
+
+                self._result.extend(struct.unpack(self._data[:needed]))
+                self._data = self._data[needed:]
+                self._remaining -= needed
+
+                if has_string:
+                    self._pairs[0] = None, count, has_string
+                    self._remaining += self._result[-1]
+
+            if has_string:
+                needed = self._result[-1]
+                if needed > len(self._data):
+                    return self._remaining - len(self._data)
+
+                self._result.pop()
+                self._result.append(self._data[:needed])
+                self._data = self._data[needed:]
+                self._remaining -= needed
+
+            self._pairs.pop(0)
+
+        return 0
+
+    send = feed
+
+
 ###############################################################################
 # NetStruct Class
 ###############################################################################
@@ -119,6 +233,9 @@ class NetStruct(object):
 
             self._initsize = pairs[0][0].size
 
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self._format)
+
     @property
     def count(self):
         """ The number of variables represented by this NetStruct. """
@@ -168,16 +285,26 @@ class NetStruct(object):
 
     def unpack(self, data):
         """
-        Unpack the string according to this NetStruct's format.
+        Unpack a string of data according to this NetStruct's format. Raises
+        a :class:`struct.error` if there isn't enough data provided.
         """
         out = self.iter_unpack(data).next()
         if isinstance(out, (int,long)):
             raise error("unpack requires a string argument of length %d" % (len(data) + out))
         return out
 
+    def obj_unpack(self, data=b""):
+        """
+        Use an :class:`Unpacker` instance to unpack a string of data
+        using this NetStruct's format.
+
+        See :class:`Unpacker` for more details.
+        """
+        return Unpacker(self, data)
+
     def iter_unpack(self, data=b""):
         """
-        Unpack the string according to this NetStruct's format.
+        Unpack a string of data according to this NetStruct's format.
 
         Because the length of the string needed to unpack a NetStruct with a
         variable length string is unknown, this method returns an iterator,
@@ -282,16 +409,23 @@ def pack(format, *data):
 
 def unpack(format, data):
     """
-    Unpack the string packed according to the given format.
+    Unpack a string of data that has been packed according to the given format.
     """
     return NetStruct(format).unpack(data)
 
 def iter_unpack(format, initial=b""):
     """
-    Unpack the string according to the given format.
-    See :meth:`NetStruct.iter_unpack` for more details.
+    Use an iterator to unpack a string of data that has been packed according
+    to the given format. See :meth:`NetStruct.iter_unpack` for more details.
     """
     return NetStruct(format).iter_unpack(initial)
+
+def obj_unpack(format, initial=b""):
+    """
+    Use an :class:`Unpacker` to unpack a string of data that has been packed
+    according to the given format. See :class:`Unpacker` for more details.
+    """
+    return NetStruct(format).obj_unpack(initial)
 
 def minimum_size(format):
     """
