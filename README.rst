@@ -1,7 +1,7 @@
 NetStruct
 =========
 
-NetStruct is a `struct <http://docs.python.org/library/struct.html>_`-like
+NetStruct is a `struct <http://docs.python.org/library/struct.html>`_-like
 module for Python designed to make it a bit easier to send and received packed
 binary data.
 
