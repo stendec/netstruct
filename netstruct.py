@@ -38,7 +38,7 @@ from struct import Struct as _Struct, error, calcsize as _calcsize
 __all__ = (
     "NetStruct",
 
-    "pack", "unpack", "iter_unpack",
+    "pack", "unpack", "obj_unpack", "iter_unpack",
     "minimum_size", "initial_size"
 )
 
