@@ -31,6 +31,12 @@ from __future__ import unicode_literals
 from struct import Struct as _Struct, error, calcsize as _calcsize
 
 
+try:
+    # Stupid Python 3...
+    range = xrange
+except NameError:
+    pass
+
 ###############################################################################
 # Exports and Constants
 ###############################################################################
@@ -63,17 +69,17 @@ class Unpacker(object):
     .. code-block:: python
 
         >>> import netstruct
-        >>> obj = netstruct.obj_unpack("ih$5b")
+        >>> obj = netstruct.obj_unpack(b"ih$5b")
         >>> obj.remaining
         11
-        >>> obj.feed("1234\x00\x0512345")
+        >>> obj.feed(b"1234\x00\x0512345")
         5
-        >>> obj.feed("\x00\x01\x02\x03\x04 so there")
+        >>> obj.feed(b"\x00\x01\x02\x03\x04 so there")
         0
         >>> obj.result
-        [825373492, '12345', 0, 1, 2, 3, 4]
+        [825373492, b'12345', 0, 1, 2, 3, 4]
         >>> obj.unused_data
-        " so there"
+        b' so there'
     """
 
     __slots__ = ("_pairs", "_data", "_result", "_remaining")
@@ -186,14 +192,14 @@ class NetStruct(object):
     length. Attempting to unpack a non-numeric value, such as ``?`` (bool),
     will raise a :class:`struct.error`. As an example of unpacking::
 
-        >>> netstruct.unpack("b$", "\x0cHello World!")
-        ['Hello World!']
+        >>> netstruct.unpack(b"b$", b"\x0cHello World!")
+        [b'Hello World!']
 
     When the ``$`` is encountered during packing, the string length will be
     used for the value directly before the string. Example::
 
-        >>> netstruct.pack("b$", "Hello World!")
-        '\x0cHello World!'
+        >>> netstruct.pack(b"b$", b"Hello World!")
+        b'\x0cHello World!'
     """
 
     __slots__ = ("_format", "_pairs", "_minsize", "_initsize", "_count")
@@ -225,7 +231,7 @@ class NetStruct(object):
             while format:
                 segment, sep, format = format.partition(b"$")
 
-                if sep and (not segment or not segment[-1:] in "bBhHiIlLqQP"):
+                if sep and (not segment or not segment[-1:] in b"bBhHiIlLqQP"):
                     raise error("bad char in struct format")
 
                 st = _Struct(byte_order + segment)
@@ -257,8 +263,7 @@ class NetStruct(object):
     @property
     def initial_size(self):
         """
-        The size of this NetStruct up to the first
-        variable-length string.
+        The size of this NetStruct up to the first variable-length string.
         """
         return self._initsize
 
@@ -291,8 +296,8 @@ class NetStruct(object):
         Unpack a string of data according to this NetStruct's format. Raises
         a :class:`struct.error` if there isn't enough data provided.
         """
-        out = self.iter_unpack(data).next()
-        if isinstance(out, (int,long)):
+        out = next(self.iter_unpack(data))
+        if isinstance(out, int):
             raise error("unpack requires a string argument of length %d" % (len(data) + out))
         return out
 
@@ -314,28 +319,28 @@ class NetStruct(object):
         able to request additional data until it is able to unpack the entire
         message.
 
-        When using the iterator, calls to .next() and .send() will return
+        When using the iterator, calls to next(it) and it.send() will return
         either the number of bytes needed to finish unpacking, or a list with
         the completed value. As such, the following is an example of how you
         might use this::
 
             >>> ns = NetStruct(b"ih$5b")
             >>> it = ns.iter_unpack()
-            >>> it.next()
-            6
-            >>> it.send(b"\x12\x05\x00\x00\x0B\x00")
+            >>> next(it)
             11
+            >>> it.send(b"\x00\x00\x05\x12\x00\x0b")
+            16
             >>> it.send(b"largeBiomes")
             5
             >>> it.send(b"\x00\x00\x01\x00\x08")
-            [1298, "largeBiomes", 0, 0, 1, 0, 8]
+            [1298, b'largeBiomes', 0, 0, 1, 0, 8]
 
         You may also provide an initial string to start the process. Be aware
-        that, if you provide a long enough string, the first call to .next() or
-        .send() may return the completed value.
+        that, if you provide a long enough string, the first call to next(it) or
+        .send(it) may return the completed value.
 
         Once the completed value is returned, you may make one last call to
-        .next() or .send() to retrieve any unconsumed data.
+        next(it) or .send(it) to retrieve any unconsumed data.
         """
         result = []
         remaining = self._minsize
@@ -379,7 +384,8 @@ def _count(format):
     count = 0
     q = b""
 
-    for char in format:
+    for index in range(len(format)):
+        char = format[index:index+1]
         if char.isdigit():
             q += char
             continue

@@ -102,32 +102,32 @@ class TestPack(unittest.TestCase):
 
 class TestIterUnpack(unittest.TestCase):
     def test_remaining(self):
-        self.assertEqual(netstruct.iter_unpack(b"b$5i").next(), 21)
+        self.assertEqual(next(netstruct.iter_unpack(b"b$5i")), 21)
 
     def test_empty_send(self):
         it = netstruct.iter_unpack(b"b$5i")
-        it.next()
+        next(it)
         it.send(b"\x05")
 
         self.assertEqual(it.send(b""), 25)
 
     def test_remain_two(self):
         it = netstruct.iter_unpack(b"b$5i")
-        it.next()
+        next(it)
 
         self.assertEqual(it.send(b"\x05"), 25)
 
     def test_remain_three(self):
         it = netstruct.iter_unpack(b"b$5i")
-        it.next()
+        next(it)
         it.send(b"\x05")
         it.send(b"Hell")
 
-        self.assertEqual(it.next(), 21)
+        self.assertEqual(next(it), 21)
 
     def test_total(self):
         it = netstruct.iter_unpack(b"b$4h")
-        it.next()
+        next(it)
         it.send(b"\x05Hello")
 
         self.assertEqual(
@@ -137,10 +137,10 @@ class TestIterUnpack(unittest.TestCase):
 
     def test_overage(self):
         it = netstruct.iter_unpack(b"b$4h")
-        it.next()
+        next(it)
         it.send(b"\x05Hello\x01\x02\x03\x04\x05\x06\x07\x08Test Here.")
 
-        self.assertEqual(it.next(), b"Test Here.")
+        self.assertEqual(next(it), b"Test Here.")
 
 class TestObjUnpack(unittest.TestCase):
     def test_creation(self):
@@ -164,13 +164,13 @@ class TestObjUnpack(unittest.TestCase):
     def test_remain_four(self):
         obj = netstruct.obj_unpack(b"ih$5b")
         self.assertEqual(
-            obj.feed("\x00\x02\x00\x04\x00\x00\x05\x04\x03\x02\x01"),
+            obj.feed(b"\x00\x02\x00\x04\x00\x00\x05\x04\x03\x02\x01"),
             0
         )
 
     def test_result(self):
         obj = netstruct.obj_unpack(b"ih$5b")
-        obj.feed("\x00\x02\x00\x04\x00\x00\x05\x04\x03\x02\x01")
+        obj.feed(b"\x00\x02\x00\x04\x00\x00\x05\x04\x03\x02\x01")
 
         self.assertEqual(obj.remaining, 0)
         self.assertEqual(obj.unused_data, b"")
