@@ -59,7 +59,99 @@ class TestConstruction(unittest.TestCase):
         self.assertEqual(len(ns._pairs), 2)
         self.assertEqual(ns.minimum_size, 11)
         self.assertEqual(ns.initial_size, 6)
+        self.assertEqual(ns.count, 7)
 
+class TestUnpack(unittest.TestCase):
+    def test_empty(self):
+        self.assertEqual(
+            netstruct.unpack(b"", b""),
+            []
+        )
+
+    def test_not_enough(self):
+        with self.assertRaises(netstruct.error):
+            netstruct.unpack(b"4i", b"\x00\x01\x02\x03")
+
+    def test_too_much(self):
+        self.assertEqual(
+            netstruct.unpack(b"i", b"\x00\x01\x02\x03\x04"),
+            [66051]
+        )
+
+class TestPack(unittest.TestCase):
+    def test_empty(self):
+        self.assertEqual(
+            netstruct.pack(b""),
+            b""
+        )
+
+    def test_not_enough(self):
+        with self.assertRaises(netstruct.error):
+            netstruct.pack(b"4i", 1, 2, 3)
+
+    def test_too_many(self):
+        with self.assertRaises(netstruct.error):
+            netstruct.pack(b"4i", 1, 2, 3, 4, 5)
+
+    def test_enough(self):
+        self.assertEqual(
+            netstruct.pack(b"4b", 1, 2, 3, 4),
+            b"\x01\x02\x03\x04"
+        )
+
+    def test_string(self):
+        self.assertEqual(
+            netstruct.pack(b"b$i", b"Hello.", 42),
+            b"\x06Hello.\x00\x00\x00\x2A"
+        )
+
+
+class TestIterUnpack(unittest.TestCase):
+    def test_remaining(self):
+        self.assertEqual(
+            netstruct.iter_unpack(b"b$5i").next(),
+            21
+        )
+
+    def test_remain_two(self):
+        it = netstruct.iter_unpack(b"b$5i")
+        it.next()
+
+        self.assertEqual(
+            it.send(b"\x05"),
+            25
+        )
+
+    def test_remain_three(self):
+        it = netstruct.iter_unpack(b"b$5i")
+        it.next()
+        it.send(b"\x05")
+        it.send(b"Hell")
+
+        self.assertEqual(
+            it.next(),
+            21
+        )
+
+    def test_total(self):
+        it = netstruct.iter_unpack(b"b$4h")
+        it.next()
+        it.send(b"\x05Hello")
+
+        self.assertEqual(
+            it.send(b"\x01\x02\x03\x04\x05\x06\x07\x08"),
+            [b"Hello", 258, 772, 1286, 1800]
+        )
+
+    def test_overage(self):
+        it = netstruct.iter_unpack(b"b$4h")
+        it.next()
+        it.send(b"\x05Hello\x01\x02\x03\x04\x05\x06\x07\x08Test Here.")
+
+        self.assertEqual(
+            it.next(),
+            b"Test Here."
+        )
 
 ###############################################################################
 # Execution
